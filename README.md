@@ -68,6 +68,42 @@ Note the lever hiding in the first column: a full ffmpeg is 70–90 MB, a build 
 decodes exactly one codec is 5–15 MB. Shipping the general tool instead of the
 required decoder costs an order of magnitude, every copy.
 
+## Measured
+
+The table above is an estimate. Three capsules now exist, and they were packed and
+run rather than reasoned about. Full method and workings in
+[reports/measurements.md](reports/measurements.md).
+
+| subject | interpreter, estimated | **measured** | image, estimated | **measured** |
+|---|---|---|---|---|
+| **film** | 10–20 MB | **4.44 MiB** | 15–25 MB | **138.4 MiB** |
+| **retro game** | 10–20 MB | **584 KiB** | 15–25 MB | **134.5 MiB** |
+| **PDF** | 8–15 MB | **68.2 MiB** | 12–20 MB | **214.9 MiB** |
+
+The lever is real. A decode-only ffmpeg is **4.44 MiB** against 70–90 MB for the
+general tool — better than the estimate, and worth more than the order of
+magnitude claimed. A static CHIP-8 interpreter is 584 KiB. That column holds.
+
+The next column does not, by 5–18x, and not because of the interpreters. The film
+capsule's decoder is **3.2%** of it; the game's emulator is **0.4%**. The rest is
+Debian: `python3` and its stdlib at 34.9 MiB, `libcrypto`, `perl` twice, apt. The
+estimate assumed the image *was* the interpreter plus a libc. What got built was
+the interpreter plus a general-purpose distribution, because `FROM
+debian:trixie-slim` and a stdlib HTTP server were the convenient choices rather
+than the small ones. The row the component table actually describes — one static
+binary as `/init`, no shell — is a build this repo did not do.
+
+The PDF row is worse than that, and it is the estimate's own error. `mutool` is
+515 KiB, but Debian links it against a **67.7 MiB** `libmupdf.so` carrying every
+font and filter MuPDF can parse. "`mutool` render-only, 8–15 MB" describes
+something nobody compiled.
+
+Two more numbers the table never had. The guest kernel is **18.2 MiB**, not
+1.5–4 MB — nodo ships a distribution-style build because it has to boot every
+service, not this one. And there is no read-only rootfs path: `nodo pack` builds
+a writable ext4, so `OVERHEAD_BYTES` is a flat **64 MiB per capsule**, 44% of the
+film image and 500% of the 12 MB capsule imagined above.
+
 ## Where the argument actually rests
 
 For a film the wrapper is noise and the case is closed. For a PDF it is not —
@@ -78,7 +114,20 @@ the five-hundredth PDF capsule is the PDF.
 
 The packer already does its half: a file at or above `MIN_BUFFER_BLOCK_SIZE`
 (32 kB) is stored as its own content-addressed block and referenced by hash
-(`docs/PACKING.md:1749`). Two things are missing, and neither is free.
+(`docs/PACKING.md:1749`). **This part is now confirmed by measurement.** Two PDF
+capsules were packed differing only in `payload.pdf`; both service records point at
+the same block `bb2331bf…` — the 67.7 MiB `libmupdf.so` — and `__block__` holds one
+copy of it, not two. The interpreter is genuinely shared.
+
+The saving it produced was **18.6%** of the second capsule, not 99%, and the three
+reasons why are the shape of the remaining work: sharing is *file*-level rather
+than *layer*-level and happens only when two builds emit byte-identical files; the
+threshold that decides eligibility was 10 MB on the node that ran this, excluding
+every file in the film and game images (which shared **nothing**, despite being
+4,060 nearly-identical files each); and the 64 MiB ext4 floor is per-capsule and
+shares with nothing at all.
+
+Two things are missing, and neither is free.
 
 **1. The skip has to reach the wire.** Today's deduplication is a storage
 property, not a bandwidth one. When the receiver already holds a block it drains
@@ -108,5 +157,19 @@ what makes two capsules share their blocks.
 
 ## Status
 
-Design only. Nothing is packaged yet — see [TODO.md](TODO.md). Every number above
-is an estimate written down so that building the thing can contradict it.
+Three capsules build, pass their tests, and pack to validated service ids:
+
+| subject | service id |
+|---|---|
+| film | `d7ee25d8bac9c9d4d5f3c4a4be1e63a1e6a6a7de52ae09e608ac434f0fd6c262` |
+| game | `1e9fd5b0045d62ea683e3f91bf0f0c2f73725ba6d706b33fcba127f6073cb033` |
+| pdf | `b5aa3b1fde8c2c0a4f7d4e0df224476570ec2d8cc6a0c3754dcee94ffdddb8f4` |
+
+`nodo execute` was run against the pdf capsule and it launched, served rendered
+PNG pages over its slot, and returned 404 for the source document. It needed two
+node-side fixes to boot at all
+([nodo#368](https://github.com/celaut-project/nodo/issues/368)).
+
+Every number in the estimate tables above was written down so that building the
+thing could contradict it. It did — see [reports/measurements.md](reports/measurements.md)
+and the per-subject `NODE-REQUIREMENTS.md`. What remains is in [TODO.md](TODO.md).
