@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><title>PDF capsule</title>
+<style>body{font:18px system-ui;background:#101725;color:white;text-align:center}img{max-width:95%;background:white}button,input{font:inherit;margin:1rem;padding:.5rem}</style>
+<h1>PDF capsule</h1><button id="prev">Previous</button><input id="number" type="number" min="1" value="1"><button id="next">Next</button><p id="status"></p><img alt="Rendered document page">
+<script>const n=document.querySelector('input'),img=document.querySelector('img'),status=document.querySelector('#status');let current;
+async function show(){status.textContent='Rendering…';const r=await fetch('/page?n='+encodeURIComponent(n.value));if(!r.ok){status.textContent='Page unavailable';return}const next=URL.createObjectURL(await r.blob());img.src=next;if(current)URL.revokeObjectURL(current);current=next;status.textContent='Page '+n.value}
+document.querySelector('#prev').onclick=()=>{n.value=Math.max(1,+n.value-1);show()};document.querySelector('#next').onclick=()=>{n.value=+n.value+1;show()};n.onchange=show;show();</script>
