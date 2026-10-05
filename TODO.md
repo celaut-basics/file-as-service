@@ -10,13 +10,16 @@ smaller and sharper than what was there before.
 
 Each of these could have invalidated the README. Two did.
 
-1. **Can a service boot from a read-only rootfs?** — **No.**
-   `src/virtualizers/microvm/build.py:1122` calls `_mkfs_ext4`, which shells out to
-   `mkfs.ext4`; there is no squashfs or erofs path, the cmdline is
-   `root=/dev/vda rw`, and `/init` mounts it `-o rw`. So `MIN_ROOTFS_BYTES`
-   (128 MiB) and `OVERHEAD_BYTES` (64 MiB) are **the floor**, exactly as feared.
-   Measured: 64 MiB of unconditional slack per capsule — 44% of the film image.
-   Filed as [nodo#369](https://github.com/celaut-project/nodo/issues/369).
+1. **Can a service boot from a read-only rootfs?** — **Not on 2026-09-16.
+   Yes on current nodo `dev`.**
+   On `7a743210` the packer always built writable ext4, so `MIN_ROOTFS_BYTES`
+   (128 MiB) and `OVERHEAD_BYTES` (64 MiB) were the floor. Measured: 64 MiB of
+   slack per capsule. Filed as
+   [nodo#369](https://github.com/celaut-project/nodo/issues/369) (now closed).
+   Current nodo (`698e6583`) reads `read_only_filesystem` as a JSON boolean
+   (`src/packers/zip_with_dockerfile.py:453-481`) and builds squashfs/erofs.
+   For that mode, `disk_space` is a ceiling (`limits.py:418-476`). The capsules
+   now set `read_only_filesystem: true`. A real pack on a node is still required.
 
 2. **Do two capsules with the same interpreter share its block?** — **Yes.**
    Two PDF capsules differing only in `payload.pdf` both reference block
@@ -70,6 +73,11 @@ and it was: images are 5–18x the estimate.
 The measurements moved the problem. It is no longer "is the wrapper noise" — it is
 that **the interpreter is 0.4–3.2% of the capsule and Debian is the rest**.
 
+- [x] **Declare `read_only_filesystem: true`.** Current nodo supports it. The
+      capsules do not write the rootfs. `disk_space` is now 512 MiB and is a
+      ceiling. Do not add `shared_filesystems`: a share is not the file-as-service
+      model, and a `shared` export is refused with a read-only rootfs
+      (`zip_with_dockerfile.py:495-521`).
 - [ ] **Build one subject as a static `/init` with no Python and no shell.** This
       is the row the README's component table describes and the one nothing here
       implements. `game/` is the right subject: a 584 KiB emulator that currently
@@ -83,30 +91,33 @@ that **the interpreter is 0.4–3.2% of the capsule and Debian is the rest**.
       is `remote-browser/stream/`'s answer; adopting it means an encoder in the
       image, which would have made the decode-only measurement meaningless. Pick
       one deliberately.
+- [ ] **Pack and execute on a real node** with current `dev`. Confirm the
+      read-only image, the 512 MiB ceiling, and the pdf `/page` route.
 
 ## Not ours to fix
 
-- [nodo#368](https://github.com/celaut-project/nodo/issues/368) — the arm64 guest
-  cannot boot: `console=ttyS0` on a machine whose console is `ttyAMA0`, and no
-  `/dev/console` in the initramfs for `/init` to `exec` onto. Both were needed to
-  get `nodo execute` working at all.
-- [nodo#369](https://github.com/celaut-project/nodo/issues/369) — read-only rootfs,
-  so a capsule is not floored at 128 + 64 MiB of writable ext4.
+Closed on nodo after the 2026-09-16 run (do not re-file):
+
+- [nodo#368](https://github.com/celaut-project/nodo/issues/368) — arm64 console
+  (closed).
+- [nodo#369](https://github.com/celaut-project/nodo/issues/369) — read-only rootfs
+  (closed). Capsules now declare it.
+- [nodo#371](https://github.com/celaut-project/nodo/issues/371) — wire-level skip
+  follow-up (closed). This audit did not verify skip on the wire.
+- [nodo#372](https://github.com/celaut-project/nodo/issues/372) — local packer
+  `unzip` (closed).
+- [nodo#373](https://github.com/celaut-project/nodo/issues/373) —
+  `MIN_BUFFER_BLOCK_SIZE` key (closed). Current example sets
+  `packer.MIN_BUFFER_BLOCK_SIZE: 32768` (`config.example.yaml:322`).
+
+Still open:
+
 - [nodo#370](https://github.com/celaut-project/nodo/issues/370) — layer-level
   blocks. File-level sharing works but only deduplicates byte-identical files.
-- [nodo#371](https://github.com/celaut-project/nodo/issues/371) — enable the
-  wire-level block skip in `GetService` once bee-rpc#9 lands.
-- [nodo#372](https://github.com/celaut-project/nodo/issues/372) — the local packer
-  shells out to `unzip` without declaring it.
-- [nodo#373](https://github.com/celaut-project/nodo/issues/373) —
-  `MIN_BUFFER_BLOCK_SIZE` is documented under `packer:` and read from a `misc:`
-  key, so a config written from the documented example silently disables block
-  storage.
 - [bee-rpc-over-grpc-py#8](https://github.com/bee-rpc-protocol/bee-rpc-over-grpc-py/issues/8) —
   until the block-skip signal reaches the wire, sharing an interpreter saves disk
   on the receiving node and nothing on the network. The film case does not care.
-  The PDF case is entirely this. PR
-  [#9](https://github.com/bee-rpc-protocol/bee-rpc-over-grpc-py/pull/9) is open.
+  The PDF case is entirely this.
 - Canonical, reproducibly-built interpreter images that packagers reference by
   hash. The measurement above only shared a block because both builds pulled the
   same pinned digest; nothing enforces that. Without such images the hashes

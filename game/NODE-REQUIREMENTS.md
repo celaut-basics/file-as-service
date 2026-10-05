@@ -12,7 +12,7 @@ precisely.
 | network | none. `network: []` |
 | RAM | 256 MiB at init, 512 MiB at most. The emulator's own state is 4 KiB of guest RAM plus a 2 KiB framebuffer |
 | CPU | 2 vCPU-equivalents at init. The interpreter loop is ~600 instructions/frame at 60 Hz |
-| disk | the rootfs the packer built; `at_init.disk_space` declares 1 GiB and the node formats exactly that |
+| disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo |
 | GPU | **none** |
 | audio device | **none** |
 | input device | **none** |
@@ -79,6 +79,10 @@ what is actually wrong: nothing here needed a distribution, and it got one anywa
 because `FROM debian:trixie-slim` and `python3 app.py` were the fast way to build
 it. A static `/init` with no Python and no shell is the build this subject
 deserves and did not get.
+
+The capsule now sets `read_only_filesystem: true`. That removes the 128+64 MiB
+ext4 floor on current nodo. It does not remove Debian. Do not add
+`shared_filesystems`.
 
 ## Zero blocks
 

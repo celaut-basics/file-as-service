@@ -11,7 +11,7 @@ a service" means anything outside the cases that were easy.
 | network | none. `network: []` |
 | RAM | 256 MiB at init, 512 MiB at most |
 | CPU | 2 vCPU-equivalents at init |
-| disk | see below — this is the whole problem |
+| disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo |
 | GPU | none |
 | audio / input devices | none |
 | dependencies | none |
@@ -53,12 +53,18 @@ can parse. The README wrote "`mutool` render-only, 8–15 MB". Nothing about thi
 build is render-only. A render-only MuPDF would need compiling the way `film/`
 compiles ffmpeg, and this capsule does not do that.
 
-**Also not predicted:** `at_init.disk_space: 1073741824` is not a ceiling.
-`limits.initial_rootfs_size_bytes` takes the max of `MIN_ROOTFS_BYTES` (128 MiB),
+**Also not predicted (2026-09-16, nodo `7a743210`):**
+`at_init.disk_space: 1073741824` was not a ceiling.
+`limits.initial_rootfs_size_bytes` took the max of `MIN_ROOTFS_BYTES` (128 MiB),
 the tree plus `OVERHEAD_BYTES` (64 MiB), and the declared figure — so declaring
-1 GiB formats a 1 GiB ext4 image for a 221 MiB tree. Without the declaration the
-floor would still be 285.3 MiB. There is no read-only rootfs path
-([nodo#369](https://github.com/celaut-project/nodo/issues/369)).
+1 GiB formatted a 1 GiB ext4 image for a 221 MiB tree. Without the declaration the
+floor would still be 285.3 MiB. There was no read-only rootfs path then
+([nodo#369](https://github.com/celaut-project/nodo/issues/369), now closed).
+
+**Current nodo `dev` @ `698e6583`.** The capsule sets `read_only_filesystem: true`.
+`disk_space` is a ceiling. The manifest now declares 512 MiB, above the 214.9 MiB
+tree measured in 2026-09-16. A real pack must confirm the tree still fits. Do not
+add `shared_filesystems`.
 
 ## The one thing that worked
 
@@ -90,4 +96,5 @@ the guest at `192.168.200.161:8080`:
 
 Getting there needed two node-side fixes (arm64 console name, missing
 `/dev/console` in the initramfs) — see
-[nodo#368](https://github.com/celaut-project/nodo/issues/368).
+[nodo#368](https://github.com/celaut-project/nodo/issues/368) (now closed).
+This audit did not execute the capsule again.

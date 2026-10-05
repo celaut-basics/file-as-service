@@ -4,6 +4,11 @@ The README's cost table was written from documentation and general knowledge, in
 order to be contradicted. This is the contradiction. Everything below was run on
 one machine on 2026-09-16; nothing is quoted from a spec.
 
+**Audit note (2026-10-05).** These numbers are from nodo `7a743210`. Current nodo
+`dev` @ `698e6583` has `read_only_filesystem` (nodo #369 closed). The capsules now
+declare that flag. This file is not a new measurement. Nothing was packed or
+executed on a node for the audit.
+
 ## Method
 
 Host: macOS 26.6 / Apple Silicon. Docker builds in a `colima` VM (aarch64 guest,

@@ -37,12 +37,13 @@ a guest.
 
 ## What it costs
 
-There is no inherent floor. `nodo`'s `MIN_ROOTFS_BYTES = 128 MiB` and
-`OVERHEAD_BYTES = 64 MiB` (`src/virtualizers/microvm/limits.py:54-55`) follow from
-building a **writable, pre-sized ext4 rootfs**; `MIN_MEM_MIB` is a configurable
-default whose real floor in code is 16 MiB. A read-only squashfs or erofs image —
-the natural shape for something immutable and content-addressed — has almost no
-slack, and those constants stop applying.
+There is no inherent floor. On a **writable** ext4 rootfs, `nodo` still uses
+`MIN_ROOTFS_BYTES = 128 MiB` and `OVERHEAD_BYTES = 64 MiB`
+(`src/virtualizers/microvm/limits.py:61-62`). Those constants do **not** apply
+to a service that sets `read_only_filesystem: true`. Then the image is squashfs
+or erofs, `disk_space` is a ceiling, and the billed size is the packed tree
+(`limits.py:418-476`). These capsules now declare that flag. The node writes
+the xattr `read_mode=ro` (`src/packers/zip_with_dockerfile.py:453-538`).
 
 Component minimums, as orders of magnitude to be measured rather than trusted:
 
@@ -100,9 +101,12 @@ something nobody compiled.
 
 Two more numbers the table never had. The guest kernel is **18.2 MiB**, not
 1.5–4 MB — nodo ships a distribution-style build because it has to boot every
-service, not this one. And there is no read-only rootfs path: `nodo pack` builds
-a writable ext4, so `OVERHEAD_BYTES` is a flat **64 MiB per capsule**, 44% of the
-film image and 500% of the 12 MB capsule imagined above.
+service, not this one. On nodo `7a743210` (2026-09-16) there was no read-only
+rootfs path, so `OVERHEAD_BYTES` was a flat **64 MiB per capsule**. That path
+exists now (`read_only_filesystem`, nodo
+[#369](https://github.com/celaut-project/nodo/issues/369) closed). The capsules
+declare it. The 64 MiB slack is no longer the floor for a new pack. The Debian
+image size is still the main cost.
 
 ## Where the argument actually rests
 
@@ -145,6 +149,39 @@ curation problem at least as much as a technical one.
 Until both hold, this is a design that already pays for itself on large payloads
 and is an argument about small ones.
 
+## Shared filesystems are not used
+
+Nodo can declare parent-to-child directories in `service.json`
+(`shared_filesystems`, nodo
+[#475](https://github.com/celaut-project/nodo/pull/475),
+`docs/SHARED_FILESYSTEMS.md`). That is a mount, not a file in the service hash.
+A `guest` share is not runnable from `nodo execute`. A `shared` export is refused
+together with `read_only_filesystem: true`
+(`src/packers/zip_with_dockerfile.py:495-521`).
+
+This repo seals the bytes and the interpreter in one content-addressed service.
+It does not put the payload on a share. Do not add `shared_filesystems` here.
+
+## Pack and run
+
+No real node ran on this host for the audit. Commands below match nodo `dev`
+@ `698e6583` (`nodo.py`). There is no `nodo run`, `nodo stop`, or `nodo build`.
+
+```
+python3 tools/prepare.py --arch arm64    # or amd64; must match the packer node
+python3 -m unittest tests.test_manifests
+nodo pack film
+nodo pack game
+nodo pack pdf
+nodo execute <service-id-or-tag>
+nodo tunnel <instance> 8080
+nodo kill <instance>
+```
+
+`nodo pack` accepts a project directory or an `https://` git URL
+(`nodo.py` `case 'pack'`). `architecture` in `service.json` must be an alias of
+an arch the node can pack (`linux/arm64` or `linux/amd64`).
+
 ## Getting the pixels to a person
 
 Once the content is a service there are two ways someone actually watches it:
@@ -157,19 +194,23 @@ what makes two capsules share their blocks.
 
 ## Status
 
-Three capsules build, pass their tests, and pack to validated service ids:
+Three capsules exist: `film/`, `game/`, `pdf/`. Each has `.service/`
+(Dockerfile, `service.json`, `pack_config.json`) and `service/`.
 
-| subject | service id |
+On 2026-09-16, nodo `7a743210` packed them and executed the pdf capsule. Those
+service ids are historical. A new pack changes the id, because `service.json` now
+sets `read_only_filesystem: true` and a 512 MiB disk ceiling.
+
+| subject | service id on 2026-09-16 |
 |---|---|
 | film | `d7ee25d8bac9c9d4d5f3c4a4be1e63a1e6a6a7de52ae09e608ac434f0fd6c262` |
 | game | `1e9fd5b0045d62ea683e3f91bf0f0c2f73725ba6d706b33fcba127f6073cb033` |
 | pdf | `b5aa3b1fde8c2c0a4f7d4e0df224476570ec2d8cc6a0c3754dcee94ffdddb8f4` |
 
-`nodo execute` was run against the pdf capsule and it launched, served rendered
-PNG pages over its slot, and returned 404 for the source document. It needed two
-node-side fixes to boot at all
-([nodo#368](https://github.com/celaut-project/nodo/issues/368)).
+The pdf capsule served PNG pages and returned 404 for the source document.
+Arm64 console boot is fixed (nodo
+[#368](https://github.com/celaut-project/nodo/issues/368) closed).
 
-Every number in the estimate tables above was written down so that building the
-thing could contradict it. It did — see [reports/measurements.md](reports/measurements.md)
-and the per-subject `NODE-REQUIREMENTS.md`. What remains is in [TODO.md](TODO.md).
+This audit did not pack or execute on a real node. See
+[reports/measurements.md](reports/measurements.md) and each
+`NODE-REQUIREMENTS.md`. What remains is in [TODO.md](TODO.md).

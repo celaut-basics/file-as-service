@@ -11,7 +11,7 @@ can be checked rather than repeated.
 | network | none. `network: []` — the capsule opens no outbound connection |
 | RAM | 256 MiB at init, 512 MiB at most. Measured working set is far below that; see below |
 | CPU | 2 vCPU-equivalents at init (`cpu_quota 200000 / cpu_period 100000`) |
-| disk | the rootfs the packer built. `at_init.disk_space` asks for 1 GiB and the node takes that literally — see *What it actually costs* |
+| disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo (`limits.py:418-476`) |
 | GPU | none. There is no X server, no compositor, no DRM device, no `/dev/dri` |
 | audio device | none. Audio leaves as PCM bytes over the same HTTP response |
 | input device | none |
@@ -50,11 +50,17 @@ other 97% is Debian: `python3` and its stdlib (28.5 MiB), `libcrypto` (6 MiB),
 `perl` (3.6 MiB twice), apt. A capsule whose interpreter is 4.44 MiB ships 138 MiB
 because the base image was chosen for being easy rather than for being small.
 
-**Disk.** `at_init.disk_space: 1073741824` is not a ceiling the node clamps to what
-it needs — `limits.initial_rootfs_size_bytes` takes the **max** of `MIN_ROOTFS_BYTES`
-(128 MiB), the populated tree plus `OVERHEAD_BYTES` (64 MiB), and the declared
-figure. Declaring 1 GiB means `mkfs.ext4` formats a 1 GiB image for a 138 MiB tree.
-The floor is real and the declaration is a second, larger floor on top of it.
+**Disk, 2026-09-16 (nodo `7a743210`).** `at_init.disk_space: 1073741824` was a
+floor. `limits.initial_rootfs_size_bytes` took the **max** of `MIN_ROOTFS_BYTES`
+(128 MiB), the tree plus `OVERHEAD_BYTES` (64 MiB), and the declared figure.
+Declaring 1 GiB formatted a 1 GiB ext4 image for a 138 MiB tree.
+
+**Disk, current nodo `dev` @ `698e6583`.** The capsule sets
+`read_only_filesystem: true` (JSON boolean). Then `disk_space` is a ceiling, not
+a floor, and the billed size is the packed tree (`limits.py:418-507`). The
+manifest now declares 512 MiB. A real pack must confirm the tree still fits.
+Do not add `shared_filesystems`: a `shared` export is refused with a read-only
+rootfs (`zip_with_dockerfile.py:495-521`), and a share is not this design.
 
 ## What this is not
 
