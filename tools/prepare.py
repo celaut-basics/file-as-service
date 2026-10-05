@@ -17,7 +17,7 @@ cd /service || exit 1
 exec python3 /service/app.py
 """
 # 512 MiB. For read_only_filesystem this is a ceiling, not a floor
-# (nodo src/virtualizers/microvm/limits.py:418-476).
+# (nodo src/virtualizers/microvm/limits.py:416-441, 444-460).
 DISK_CEILING = 536870912
 
 
@@ -59,6 +59,7 @@ def pack_config() -> dict:
         "blocks_directory": "__block__",
         "zip": False,
         "include": ["service"],
+        "ignore": ["__pycache__"],
     }
 
 

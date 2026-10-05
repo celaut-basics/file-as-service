@@ -11,7 +11,7 @@ can be checked rather than repeated.
 | network | none. `network: []` — the capsule opens no outbound connection |
 | RAM | 256 MiB at init, 512 MiB at most. Measured working set is far below that; see below |
 | CPU | 2 vCPU-equivalents at init (`cpu_quota 200000 / cpu_period 100000`) |
-| disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo (`limits.py:418-476`) |
+| disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo (`limits.py:416-441`, `444-460`) |
 | GPU | none. There is no X server, no compositor, no DRM device, no `/dev/dri` |
 | audio device | none. Audio leaves as PCM bytes over the same HTTP response |
 | input device | none |
@@ -57,7 +57,7 @@ Declaring 1 GiB formatted a 1 GiB ext4 image for a 138 MiB tree.
 
 **Disk, current nodo `dev` @ `698e6583`.** The capsule sets
 `read_only_filesystem: true` (JSON boolean). Then `disk_space` is a ceiling, not
-a floor, and the billed size is the packed tree (`limits.py:418-507`). The
+a floor, and the billed size is the built image (`limits.py:503-504`). The
 manifest now declares 512 MiB. A real pack must confirm the tree still fits.
 Do not add `shared_filesystems`: a `shared` export is refused with a read-only
 rootfs (`zip_with_dockerfile.py:495-521`), and a share is not this design.

@@ -90,7 +90,7 @@ This capsule emitted **no** content-addressed blocks at all. Its largest file is
 `python3.13` at 6.36 MiB, and this node runs `MIN_BUFFER_BLOCK_SIZE` at 10,000,000
 — so nothing clears the bar and all 134.5 MiB is inlined into one protobuf.
 
-At the documented default of 32,768 (`config.example.yaml:281`) the same tree
+At the documented default of 32,768 (`config.example.yaml:322`) the same tree
 would have produced **951 blocks / 121.4 MiB**, nearly all of it Debian shared
 with any other Debian capsule. The threshold, not the design, is what decides
 whether this capsule shares anything.

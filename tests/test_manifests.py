@@ -43,8 +43,8 @@ class ManifestTests(unittest.TestCase):
                 self.assertGreaterEqual(at_most["mem_limit"], at_init["mem_limit"])
                 self.assertGreaterEqual(at_most["disk_space"], at_init["disk_space"])
                 # Ceiling for a read-only tree (~135-215 MiB on 2026-09-16).
-                self.assertGreaterEqual(at_init["disk_space"], 256 * 1024 * 1024)
-                self.assertLessEqual(at_init["disk_space"], 1024 * 1024 * 1024)
+                self.assertEqual(at_init["disk_space"], 536870912)
+                self.assertEqual(at_most["disk_space"], 536870912)
 
     def test_pack_config_include_service(self):
         for kind in KINDS:
@@ -53,6 +53,7 @@ class ManifestTests(unittest.TestCase):
                 data = json.loads(path.read_text())
                 self.assertEqual(data["include"], ["service"])
                 self.assertFalse(data.get("zip", False))
+                self.assertIn("__pycache__", data.get("ignore", []))
 
     def test_dockerfile_copy_sources_start_with_dot(self):
         for kind in KINDS:

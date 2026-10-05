@@ -41,9 +41,10 @@ There is no inherent floor. On a **writable** ext4 rootfs, `nodo` still uses
 `MIN_ROOTFS_BYTES = 128 MiB` and `OVERHEAD_BYTES = 64 MiB`
 (`src/virtualizers/microvm/limits.py:61-62`). Those constants do **not** apply
 to a service that sets `read_only_filesystem: true`. Then the image is squashfs
-or erofs, `disk_space` is a ceiling, and the billed size is the packed tree
-(`limits.py:418-476`). These capsules now declare that flag. The node writes
-the xattr `read_mode=ro` (`src/packers/zip_with_dockerfile.py:453-538`).
+or erofs, `disk_space` is a ceiling (`limits.py:416-441`, `444-460`). The billed
+size is the built image (`limits.py:503-504`), not the uncompressed tree. These
+capsules now declare that flag. The node writes the xattr `read_mode=ro`
+(`src/packers/zip_with_dockerfile.py:538`).
 
 Component minimums, as orders of magnitude to be measured rather than trusted:
 
@@ -118,7 +119,7 @@ the five-hundredth PDF capsule is the PDF.
 
 The packer already does its half: a file at or above `MIN_BUFFER_BLOCK_SIZE`
 (32 kB) is stored as its own content-addressed block and referenced by hash
-(`docs/PACKING.md:1749`). **This part is now confirmed by measurement.** Two PDF
+(`docs/PACKING.md:2155`). **This part is now confirmed by measurement.** Two PDF
 capsules were packed differing only in `payload.pdf`; both service records point at
 the same block `bb2331bf…` — the 67.7 MiB `libmupdf.so` — and `__block__` holds one
 copy of it, not two. The interpreter is genuinely shared.

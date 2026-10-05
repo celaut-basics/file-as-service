@@ -113,7 +113,7 @@ nodo pack <subject>   # positional dir, no flags
 
 Film and game emitted **zero blocks**, and that is a configuration accident worth
 naming. `packer.MIN_BUFFER_BLOCK_SIZE` is documented at **32,768** in
-`config.example.yaml:281`. This node's `config.yaml` carries it at **10,000,000**
+`config.example.yaml:281` on `7a743210`. This node's `config.yaml` carries it at **10,000,000**
 under a `misc:` key. Film's largest file is `python3.13` at 6.36 MiB — under 10 MB
 — so nothing in the film or game image is block-eligible and the entire 138 MiB
 filesystem is inlined into one protobuf. Only `libmupdf.so` (67.7 MiB) clears the
@@ -240,16 +240,18 @@ re-reads it (`src/utils/config.py:188-192`), so editing it under a running
 
 ### 1. Can a service boot from a read-only rootfs?
 
-**No.** `src/virtualizers/microvm/build.py:1122` calls `_mkfs_ext4`, which shells
-out to `mkfs.ext4` (`build.py:902-935`) and has no squashfs or erofs path. The
-kernel cmdline is `root=/dev/vda rw` (`execute.py:867`) and `/init` mounts it
+**No, on nodo `7a743210` (2026-09-16).** That checkout's
+`src/virtualizers/microvm/build.py:1122` called `_mkfs_ext4`, which shelled
+out to `mkfs.ext4` (`build.py:902-935`) and had no squashfs or erofs path. The
+kernel cmdline was `root=/dev/vda rw` (`execute.py:867`) and `/init` mounted it
 `mount -t ext4 -o rw /dev/vda /newroot`.
 
-So `MIN_ROOTFS_BYTES` and `OVERHEAD_BYTES` are not policy constants that can be
-set aside. They are the floor, exactly as TODO feared. The measured consequence:
-64 MiB of unconditional slack per capsule, and a 12 MB PDF capsule really would be
-a 192 MB one. Filed as
-[celaut-project/nodo#369](https://github.com/celaut-project/nodo/issues/369).
+On that node, `MIN_ROOTFS_BYTES` and `OVERHEAD_BYTES` were the floor. The measured
+consequence: 64 MiB of unconditional slack per capsule, and a 12 MB PDF capsule
+really would be a 192 MB one. Filed as
+[celaut-project/nodo#369](https://github.com/celaut-project/nodo/issues/369)
+(now closed). Current nodo `dev` @ `698e6583` accepts `read_only_filesystem`.
+This section is history, not a new measurement.
 
 ### 2. Do two capsules with the same interpreter share its block?
 

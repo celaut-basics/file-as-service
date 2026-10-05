@@ -18,7 +18,7 @@ Each of these could have invalidated the README. Two did.
    [nodo#369](https://github.com/celaut-project/nodo/issues/369) (now closed).
    Current nodo (`698e6583`) reads `read_only_filesystem` as a JSON boolean
    (`src/packers/zip_with_dockerfile.py:453-481`) and builds squashfs/erofs.
-   For that mode, `disk_space` is a ceiling (`limits.py:418-476`). The capsules
+   For that mode, `disk_space` is a ceiling (`limits.py:416-441`, `444-460`). The capsules
    now set `read_only_filesystem: true`. A real pack on a node is still required.
 
 2. **Do two capsules with the same interpreter share its block?** — **Yes.**
