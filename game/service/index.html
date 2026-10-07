@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><title>Game capsule</title>
+<style>body{font:18px system-ui;background:#101725;color:white;max-width:850px;margin:3rem auto}canvas{width:100%;image-rendering:pixelated;background:black}button{font:inherit;padding:1rem;margin:.3rem;touch-action:none}</style>
+<h1>CHIP-8 capsule</h1><canvas width="64" height="32"></canvas><p>Demo: move the block using Q / E (CHIP-8 keys 4 / 6).</p><button id="sound">Enable sound</button><div id="keys"></div><p id="status">Keyboard: 1234 / QWER / ASDF / ZXCV</p>
+<script>
+const map={'1':1,'2':2,'3':3,'4':12,q:4,w:5,e:6,r:13,a:7,s:8,d:9,f:14,z:10,x:0,c:11,v:15};let keys=0,ac,gain;
+const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d');
+function key(k,down){keys=down?keys|(1<<k):keys&~(1<<k)}
+onkeydown=e=>{if(e.key.toLowerCase() in map){e.preventDefault();key(map[e.key.toLowerCase()],true)}};onkeyup=e=>{if(e.key.toLowerCase() in map)key(map[e.key.toLowerCase()],false)};onblur=()=>keys=0;
+for(const [label,k] of Object.entries(map)){const b=document.createElement('button');b.textContent=label.toUpperCase();b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);key(k,true)};b.onpointerup=b.onpointercancel=()=>key(k,false);document.querySelector('#keys').append(b)}
+document.querySelector('#sound').onclick=async()=>{if(!ac){ac=new AudioContext();gain=ac.createGain();gain.gain.value=0;gain.connect(ac.destination);const tone=ac.createOscillator();tone.frequency.value=440;tone.connect(gain);tone.start()}await ac.resume()};
+async function tick(){try{const r=await fetch('/frame?keys='+keys);if(!r.ok)throw Error(await r.text());const b=new Uint8Array(await r.arrayBuffer());if(b.length!==2049)throw Error('Bad frame');const f=ctx.createImageData(64,32);for(let i=0;i<2048;i++){f.data[i*4]=b[i]?60:0;f.data[i*4+1]=b[i]?240:0;f.data[i*4+2]=b[i]?160:0;f.data[i*4+3]=255}ctx.putImageData(f,0,0);canvas.dataset.frames=String(1+Number(canvas.dataset.frames||0));if(gain)gain.gain.value=b[2048]?.05:0;setTimeout(tick,33)}catch(e){document.querySelector('#status').textContent=e.message;if(gain)gain.gain.value=0}}tick();
+</script>

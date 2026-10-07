@@ -1,0 +1,33 @@
+{
+  "tag": "file-as-service-film",
+  "architecture": "linux/arm64",
+  "read_only_filesystem": true,
+  "init": {
+    "entry_path": "/service/entrypoint.sh"
+  },
+  "api": [
+    {
+      "port": 8080,
+      "transport": "tcp",
+      "protocol": [
+        "http",
+        "file-as-service-film"
+      ]
+    }
+  ],
+  "network": [],
+  "resources": {
+    "at_init": {
+      "mem_limit": 268435456,
+      "disk_space": 536870912,
+      "cpu_period": 100000,
+      "cpu_quota": 200000
+    },
+    "at_most": {
+      "mem_limit": 536870912,
+      "disk_space": 536870912,
+      "cpu_period": 100000,
+      "cpu_quota": 400000
+    }
+  }
+}

@@ -1,0 +1,25 @@
+<!doctype html><meta charset="utf-8"><title>Film capsule</title>
+<style>body{background:#101725;color:#eee;font:18px system-ui;max-width:900px;margin:3rem auto}canvas{width:100%;background:#000}button,input{font:inherit;margin:1rem .3rem;padding:.5rem}#status{min-height:2em}</style>
+<h1>Film capsule</h1><canvas width="320" height="180"></canvas>
+<button id="play">Play</button><button id="stop">Stop</button><label>Start (seconds) <input id="start" type="number" min="0" max="86400" value="0"></label>
+<p id="status">Decoded in the service. Preview: 320×180, 12 fps; stereo PCM audio.</p>
+<script>
+let abort, audio; const canvas=document.querySelector('canvas'), ctx=canvas.getContext('2d'), status=document.querySelector('#status');
+async function stop(){abort?.abort();if(audio){await audio.close();audio=null}}
+document.querySelector('#stop').onclick=stop;
+document.querySelector('#play').onclick=async()=>{
+ await stop();abort=new AbortController();const signal=abort.signal;audio=new AudioContext({sampleRate:48000});const ac=audio;await ac.resume();
+ try{
+  const res=await fetch('/play?start='+encodeURIComponent(document.querySelector('#start').value),{signal});if(!res.ok)throw Error(await res.text());
+  const reader=res.body.getReader();let buf=new Uint8Array(0);async function read(n){while(buf.length<n){const r=await reader.read();if(r.done){if(!buf.length)return null;throw Error('Truncated stream')}const b=new Uint8Array(buf.length+r.value.length);b.set(buf);b.set(r.value,buf.length);buf=b}const out=buf.slice(0,n);buf=buf.slice(n);return out}
+  if(new TextDecoder().decode(await read(4))!=='FAS1')throw Error('Invalid stream');const base=ac.currentTime+.3;
+  status.textContent='Playing';let frames=0;
+  while(!signal.aborted){const header=await read(13);if(!header)break;const view=new DataView(header.buffer),kind=view.getUint8(0),n=view.getUint32(1),t=view.getFloat64(5);if(n>320*180*3||!Number.isFinite(t))throw Error('Bad packet');const bytes=await read(n);if(!bytes)throw Error('Missing packet');
+   while(base+t-ac.currentTime>1&&!signal.aborted)await new Promise(r=>setTimeout(r,20));
+   if(kind===1){if(n!==320*180*3)throw Error('Bad frame');const frame=ctx.createImageData(320,180);for(let i=0,j=0;i<n;i+=3,j+=4){frame.data[j]=bytes[i];frame.data[j+1]=bytes[i+1];frame.data[j+2]=bytes[i+2];frame.data[j+3]=255}setTimeout(()=>{if(!signal.aborted){ctx.putImageData(frame,0,0);canvas.dataset.frames=String(++frames)}},Math.max(0,(base+t-ac.currentTime)*1000));}
+   else if(kind===2){if(n%8)throw Error('Bad audio');const data=new DataView(bytes.buffer),b=ac.createBuffer(2,n/8,48000);for(let i=0;i<n/8;i++)for(let c=0;c<2;c++)b.getChannelData(c)[i]=data.getFloat32(i*8+c*4,true);const source=ac.createBufferSource();source.buffer=b;source.connect(ac.destination);source.start(Math.max(ac.currentTime,base+t));}
+   else throw Error('Unknown packet');
+  }status.textContent='Playback stream complete';
+ }catch(e){if(e.name!=='AbortError')status.textContent=e.message}
+};
+</script>
