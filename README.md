@@ -165,23 +165,43 @@ It does not put the payload on a share. Do not add `shared_filesystems` here.
 
 ## Pack and run
 
-No real node ran on this host for the audit. Commands below match nodo `dev`
-@ `698e6583` (`nodo.py`). There is no `nodo run`, `nodo stop`, or `nodo build`.
+Commands below match nodo `dev` @ `f14a1447` (`nodo.py`). There is no
+`nodo run`, `nodo stop`, or `nodo build`.
 
 ```
-python3 tools/prepare.py --arch arm64    # or amd64; must match the packer node
+python3 tools/prepare.py                 # writes the manifests of both architectures
 python3 -m unittest tests.test_manifests
-nodo pack film
-nodo pack game
-nodo pack pdf
+nodo pack pdf/amd64                      # or pdf/arm64; the same for film/ and game/
 nodo execute <service-id-or-tag>
 nodo tunnel <instance> 8080
 nodo kill <instance>
 ```
 
 `nodo pack` accepts a project directory or an `https://` git URL
-(`nodo.py` `case 'pack'`). `architecture` in `service.json` must be an alias of
-an arch the node can pack (`linux/arm64` or `linux/amd64`).
+(`nodo.py` `case 'pack'`).
+
+### Packing: one tree per architecture
+
+A Celaut service has one architecture. Thus each capsule has one pack root for
+each architecture, as `celaut-basics/demo-service` does:
+
+```
+pdf/
+├── amd64/                  nodo pack pdf/amd64
+│   ├── .service/           Dockerfile, service.json, pack_config.json (linux/amd64)
+│   └── service -> ../service
+├── arm64/                  nodo pack pdf/arm64
+│   ├── .service/           the same files for linux/arm64
+│   └── service -> ../service
+└── service/                app.py, entrypoint.sh, http_base.py, index.html, payload
+```
+
+`film/` and `game/` have the same shape. `nodo pack` copies the pack root and
+follows the symlink. A plain `docker build` does not follow it: for a local
+build, copy the root first (`cp -RL pdf/amd64 /tmp/pdf-amd64`). The two roots
+differ only in `architecture`. The Dockerfiles are the same, because each
+base image pin is a multi-arch index and nothing in them depends on the
+architecture. `tests/test_manifests.py` checks the layout.
 
 ## Getting the pixels to a person
 
@@ -195,8 +215,8 @@ what makes two capsules share their blocks.
 
 ## Status
 
-Three capsules exist: `film/`, `game/`, `pdf/`. Each has `.service/`
-(Dockerfile, `service.json`, `pack_config.json`) and `service/`.
+Three capsules exist: `film/`, `game/`, `pdf/`. Each has `amd64/` and `arm64/`
+(a `.service/` with Dockerfile, `service.json`, `pack_config.json`) and `service/`.
 
 On 2026-09-16, nodo `7a743210` packed them and executed the pdf capsule. Those
 service ids are historical. A new pack changes the id, because `service.json` now

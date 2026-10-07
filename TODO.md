@@ -46,8 +46,9 @@ Each of these could have invalidated the README. Two did.
 
 ## Build
 
-One directory per subject, following `remote-browser`'s layout: `.service/`
-(Dockerfile, `pack_config.json`, `service.json`), `service/entrypoint.sh`, and a
+One directory per subject, with one pack root per architecture (`amd64/`,
+`arm64/`, each with `.service/`: Dockerfile, `pack_config.json`, `service.json`),
+`service/entrypoint.sh`, and a
 `NODE-REQUIREMENTS.md` saying what it wants from the node and from your host.
 
 - [x] **`film/`** — decode-only h264/aac, no X server, no compositor. Packs,
