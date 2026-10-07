@@ -232,6 +232,11 @@ The pdf capsule served PNG pages and returned 404 for the source document.
 Arm64 console boot is fixed (nodo
 [#368](https://github.com/celaut-project/nodo/issues/368) closed).
 
-This audit did not pack or execute on a real node. See
-[reports/measurements.md](reports/measurements.md) and each
+On 2026-10-06, nodo `dev` `f14a1447` packed all six pack roots (three
+capsules, two architectures). The amd64 capsules do not start on that node:
+cloud-hypervisor refuses two `--disk` options (nodo
+[#483](https://github.com/celaut-project/nodo/issues/483), fix in nodo
+PR [#501](https://github.com/celaut-project/nodo/pull/501) and a rebuild of
+the guest kernel). With both, the pdf capsule booted read-only and served
+pages. See [reports/measurements.md](reports/measurements.md) and each
 `NODE-REQUIREMENTS.md`. What remains is in [TODO.md](TODO.md).
