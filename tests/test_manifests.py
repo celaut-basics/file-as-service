@@ -1,32 +1,32 @@
 """Local checks for pack manifests. This does not pack or start a node."""
 import json
+import os
 import stat
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 KINDS = ("film", "game", "pdf")
-ARCH_ALIASES = {
-    "linux/amd64",
-    "amd64",
-    "x86_64",
-    "linux/arm64",
-    "arm64",
-    "arm_64",
-    "aarch64",
-}
+ARCHES = ("amd64", "arm64")
+
+
+def pack_roots():
+    """(kind, arch, pack root) for each capsule and architecture."""
+    for kind in KINDS:
+        for arch in ARCHES:
+            yield kind, arch, ROOT / kind / arch
 
 
 class ManifestTests(unittest.TestCase):
     def test_service_json_matches_current_nodo(self):
-        for kind in KINDS:
-            path = ROOT / kind / ".service" / "service.json"
-            with self.subTest(kind=kind):
+        for kind, arch, root in pack_roots():
+            path = root / ".service" / "service.json"
+            with self.subTest(kind=kind, arch=arch):
                 data = json.loads(path.read_text())
                 self.assertNotIn("gas_amount_per_call", json.dumps(data))
                 self.assertNotIn("entrypoint", data)
                 self.assertEqual(data["tag"], f"file-as-service-{kind}")
-                self.assertIn(data["architecture"], ARCH_ALIASES)
+                self.assertEqual(data["architecture"], f"linux/{arch}")
                 self.assertIs(data["read_only_filesystem"], True)
                 self.assertNotIn("shared_filesystems", data)
                 self.assertEqual(data["init"]["entry_path"], "/service/entrypoint.sh")
@@ -47,18 +47,18 @@ class ManifestTests(unittest.TestCase):
                 self.assertEqual(at_most["disk_space"], 536870912)
 
     def test_pack_config_include_service(self):
-        for kind in KINDS:
-            path = ROOT / kind / ".service" / "pack_config.json"
-            with self.subTest(kind=kind):
+        for kind, arch, root in pack_roots():
+            path = root / ".service" / "pack_config.json"
+            with self.subTest(kind=kind, arch=arch):
                 data = json.loads(path.read_text())
                 self.assertEqual(data["include"], ["service"])
                 self.assertFalse(data.get("zip", False))
                 self.assertIn("__pycache__", data.get("ignore", []))
 
     def test_dockerfile_copy_sources_start_with_dot(self):
-        for kind in KINDS:
-            text = (ROOT / kind / ".service" / "Dockerfile").read_text()
-            with self.subTest(kind=kind):
+        for kind, arch, root in pack_roots():
+            text = (root / ".service" / "Dockerfile").read_text()
+            with self.subTest(kind=kind, arch=arch):
                 self.assertTrue(text.startswith("FROM "))
                 for line in text.splitlines():
                     stripped = line.strip()
@@ -111,6 +111,59 @@ class ManifestTests(unittest.TestCase):
         data = module.manifest("film", "amd64")
         self.assertEqual(data["architecture"], "linux/amd64")
         self.assertIs(data["read_only_filesystem"], True)
+        for kind, arch, root in pack_roots():
+            with self.subTest(kind=kind, arch=arch):
+                written = json.loads((root / ".service" / "service.json").read_text())
+                self.assertEqual(written, module.manifest(kind, arch))
+
+
+class PerArchitectureLayoutTests(unittest.TestCase):
+    """One pack root per architecture, as celaut-basics/demo-service has.
+
+    `nodo pack <kind>/<arch>` reads only `<kind>/<arch>/.service/` and copies
+    the root with its symlinks followed. So the root holds real `.service/`
+    files and reaches the shared source through `service -> ../service`.
+    """
+
+    def test_no_service_dir_at_the_old_place(self):
+        for kind in KINDS:
+            self.assertFalse((ROOT / kind / ".service").exists(), kind)
+
+    def test_each_pack_root_has_real_service_files(self):
+        for kind, arch, root in pack_roots():
+            for name in ("Dockerfile", "service.json", "pack_config.json"):
+                path = root / ".service" / name
+                with self.subTest(kind=kind, arch=arch, name=name):
+                    self.assertTrue(path.is_file())
+                    self.assertFalse(path.is_symlink())
+
+    def test_shared_source_is_a_link_in_each_pack_root(self):
+        for kind, arch, root in pack_roots():
+            link = root / "service"
+            with self.subTest(kind=kind, arch=arch):
+                self.assertTrue(link.is_symlink())
+                self.assertEqual(os.readlink(link), "../service")
+                self.assertTrue((link / "entrypoint.sh").is_file())
+
+    def test_both_architectures_differ_only_in_architecture(self):
+        for kind in KINDS:
+            specs = {}
+            for arch in ARCHES:
+                spec = json.loads((ROOT / kind / arch / ".service" / "service.json").read_text())
+                spec.pop("architecture")
+                specs[arch] = spec
+            dockerfiles = {
+                arch: (ROOT / kind / arch / ".service" / "Dockerfile").read_text()
+                for arch in ARCHES
+            }
+            configs = {
+                arch: (ROOT / kind / arch / ".service" / "pack_config.json").read_text()
+                for arch in ARCHES
+            }
+            with self.subTest(kind=kind):
+                self.assertEqual(specs["amd64"], specs["arm64"])
+                self.assertEqual(dockerfiles["amd64"], dockerfiles["arm64"])
+                self.assertEqual(configs["amd64"], configs["arm64"])
 
 
 if __name__ == "__main__":
