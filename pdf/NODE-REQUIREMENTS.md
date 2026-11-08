@@ -12,6 +12,7 @@ a service" means anything outside the cases that were easy.
 | RAM | 256 MiB at init, 512 MiB at most |
 | CPU | 2 vCPU-equivalents at init |
 | disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo |
+| host tools | `mksquashfs` (squashfs-tools) or `mkfs.erofs` (erofs-utils) on the node host, to build the read-only rootfs. A root install of nodo dev `a97148dd` does not install them; without them the launch fails with "neither tool that can build a read-only rootfs is in PATH" |
 | GPU | none |
 | audio / input devices | none |
 | dependencies | none |

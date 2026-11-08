@@ -240,3 +240,10 @@ PR [#501](https://github.com/celaut-project/nodo/pull/501) and a rebuild of
 the guest kernel). With both, the pdf capsule booted read-only and served
 pages. See [reports/measurements.md](reports/measurements.md) and each
 `NODE-REQUIREMENTS.md`. What remains is in [TODO.md](TODO.md).
+
+On 2026-11-08, on fresh test nodes installed at nodo `dev` `a97148dd`, the `v1`
+assets and new packs of the three amd64 capsules started and served (pdf: a PNG
+page; game: a frame; film: `/info` and `/play`). The node host needs
+`mksquashfs` (squashfs-tools) or `mkfs.erofs` (erofs-utils) for the read-only
+rootfs. A root install of that nodo does not install either one, and the launch
+fails until one is installed.
