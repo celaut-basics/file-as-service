@@ -12,6 +12,7 @@ can be checked rather than repeated.
 | RAM | 256 MiB at init, 512 MiB at most. Measured working set is far below that; see below |
 | CPU | 2 vCPU-equivalents at init (`cpu_quota 200000 / cpu_period 100000`) |
 | disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo (`limits.py:416-441`, `444-460`) |
+| host tools | `mksquashfs` (squashfs-tools) or `mkfs.erofs` (erofs-utils) on the node host, to build the read-only rootfs. A root install of nodo dev `a97148dd` does not install them; without them the launch fails with "neither tool that can build a read-only rootfs is in PATH" |
 | GPU | none. There is no X server, no compositor, no DRM device, no `/dev/dri` |
 | audio device | none. Audio leaves as PCM bytes over the same HTTP response |
 | input device | none |

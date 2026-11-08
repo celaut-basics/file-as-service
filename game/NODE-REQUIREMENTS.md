@@ -13,6 +13,7 @@ precisely.
 | RAM | 256 MiB at init, 512 MiB at most. The emulator's own state is 4 KiB of guest RAM plus a 2 KiB framebuffer |
 | CPU | 2 vCPU-equivalents at init. The interpreter loop is ~600 instructions/frame at 60 Hz |
 | disk | read-only rootfs. `read_only_filesystem: true`. `at_init.disk_space` is 512 MiB and is a **ceiling** on current nodo |
+| host tools | `mksquashfs` (squashfs-tools) or `mkfs.erofs` (erofs-utils) on the node host, to build the read-only rootfs. A root install of nodo dev `a97148dd` does not install them; without them the launch fails with "neither tool that can build a read-only rootfs is in PATH" |
 | GPU | **none** |
 | audio device | **none** |
 | input device | **none** |
